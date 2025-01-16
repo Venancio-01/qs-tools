@@ -3,7 +3,7 @@ tmp_dir = "tmp"
 
 [build]
 # 构建命令
-cmd = "go build -o ./tmp/main ./cmd/qingshan-tools"
+cmd = "go build -o ./tmp/main ./cmd/qs-tools"
 # 二进制文件路径
 bin = "tmp/main"
 # 需要监控的文件扩展名

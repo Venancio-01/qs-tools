@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"qingshan-tools/internal/cmd"
+	"qs-tools/internal/cmd"
 
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"

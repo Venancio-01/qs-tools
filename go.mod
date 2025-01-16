@@ -1,4 +1,4 @@
-module qingshan-tools
+module qs-tools
 
 go 1.23.4
 

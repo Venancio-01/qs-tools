@@ -12,7 +12,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "显示程序版本",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("青山工具集 %s\n", Version)
+		fmt.Printf("QS工具集 %s\n", Version)
 	},
 }
 

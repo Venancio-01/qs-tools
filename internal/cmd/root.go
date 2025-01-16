@@ -8,9 +8,9 @@ import (
 )
 
 var RootCmd = &cobra.Command{
-	Use:   "qingshan-tools",
-	Short: "青山工具集 - 一个实用的命令行工具集",
-	Long: `青山工具集是一个集成了多种实用功能的命令行工具集。
+	Use:   "qs-tools",
+	Short: "qs-tools - 一个实用的命令行工具集",
+	Long: `qs-tools 是一个集成了多种实用功能的命令行工具集。
 可以帮助你完成各种日常任务，提高工作效率。`,
 }
 

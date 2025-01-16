@@ -7,6 +7,9 @@
 *.dll
 *.so
 *.dylib
+bin/
+build/
+tmp/
 
 # Test binary, built with `go test -c`
 *.test
@@ -23,3 +26,13 @@ go.work.sum
 
 # env file
 .env
+
+# IDE
+.idea/
+
+# 日志文件
+*.log
+
+# 操作系统
+.DS_Store
+Thumbs.db
