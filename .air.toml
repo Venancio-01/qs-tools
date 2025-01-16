@@ -1,0 +1,37 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+# 构建命令
+cmd = "go build -o ./tmp/main ./cmd/qingshan-tools"
+# 二进制文件路径
+bin = "tmp/main"
+# 需要监控的文件扩展名
+include_ext = ["go", "tpl", "tmpl", "html"]
+# 忽略的目录
+exclude_dir = ["assets", "tmp", "vendor", ".git", "docs"]
+# 文件变更后等待编译的时间（毫秒）
+delay = 1000
+# 终止信号等待时间
+kill_delay = "0.5s"
+# 构建日志文件
+log = "build-errors.log"
+# 是否发送中断信号
+send_interrupt = false
+# 发生错误时停止
+stop_on_error = true
+
+[color]
+# 不同类型输出的颜色配置
+main = "magenta"
+watcher = "cyan"
+build = "yellow"
+runner = "green"
+
+[log]
+# 是否显示时间
+time = true
+
+[misc]
+# 退出时清理临时文件
+clean_on_exit = true 
