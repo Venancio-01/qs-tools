@@ -430,248 +430,160 @@ func applyFish() {
 	fmt.Println("2. 如果出现问题，可以从 ~/.config/fish.bak 恢复原有配置")
 }
 
-func backupScoop() {
+func backupScoop() error {
+	fmt.Println("开始备份 Scoop 配置...")
+
 	if runtime.GOOS != "windows" {
-		fmt.Println("Scoop 备份功能仅支持 Windows 系统")
-		return
+		return fmt.Errorf("Scoop 仅支持 Windows 系统")
 	}
 
-	// 检查是否安装了 scoop
-	if _, err := exec.LookPath("scoop"); err != nil {
-		fmt.Println("未检测到 Scoop，请先安装 Scoop")
-		return
-	}
-
-	// 获取用户主目录
+	// 1. 获取 Scoop 目录
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		fmt.Printf("获取用户主目录失败: %v\n", err)
-		return
+		return fmt.Errorf("获取用户主目录失败: %v", err)
+	}
+	scoopDir := filepath.Join(homeDir, "scoop")
+
+	// 检查 Scoop 是否已安装
+	if _, err := os.Stat(scoopDir); os.IsNotExist(err) {
+		return fmt.Errorf("未找到 Scoop 安装目录")
 	}
 
-	// 创建备份目录
-	backupDir := filepath.Join(homeDir, "qs-tools-backups")
-	if err := os.MkdirAll(backupDir, 0755); err != nil {
-		fmt.Printf("创建备份目录失败: %v\n", err)
-		return
-	}
-
-	// 创建临时目录存放配置文件
-	tmpDir := filepath.Join(backupDir, "scoop-backup")
-	if err := os.MkdirAll(tmpDir, 0755); err != nil {
-		fmt.Printf("创建临时目录失败: %v\n", err)
-		return
+	// 2. 创建临时目录
+	tmpDir, err := os.MkdirTemp("", "scoop-backup")
+	if err != nil {
+		return fmt.Errorf("创建临时目录失败: %v", err)
 	}
 	defer os.RemoveAll(tmpDir)
 
-	fmt.Println("开始备份 Scoop 配置...")
-
-	// 1. 导出已安装的应用列表
+	// 3. 导出已安装的应用列表
 	fmt.Println("\n1. 导出已安装的应用列表...")
-	installedApps := filepath.Join(tmpDir, "installed-apps.txt")
+	appsFile := filepath.Join(tmpDir, "apps.txt")
 	listCmd := exec.Command("scoop", "list")
-	output, err := listCmd.Output()
+	appsOutput, err := listCmd.Output()
 	if err != nil {
-		fmt.Printf("获取已安装应用列表失败: %v\n", err)
-		return
+		return fmt.Errorf("导出应用列表失败: %v", err)
 	}
-	if err := os.WriteFile(installedApps, output, 0644); err != nil {
-		fmt.Printf("保存应用列表失败: %v\n", err)
-		return
+	if err := os.WriteFile(appsFile, appsOutput, 0644); err != nil {
+		return fmt.Errorf("保存应用列表失败: %v", err)
 	}
 
-	// 2. 导出 bucket 列表
+	// 4. 导出软件源列表
 	fmt.Println("2. 导出软件源列表...")
-	bucketList := filepath.Join(tmpDir, "bucket-list.txt")
-	bucketCmd := exec.Command("scoop", "bucket", "list")
-	output, err = bucketCmd.Output()
+	bucketsFile := filepath.Join(tmpDir, "buckets.txt")
+	bucketsCmd := exec.Command("scoop", "bucket", "list")
+	bucketsOutput, err := bucketsCmd.Output()
 	if err != nil {
-		fmt.Printf("获取软件源列表失败: %v\n", err)
-		return
+		return fmt.Errorf("导出软件源列表失败: %v", err)
 	}
-	if err := os.WriteFile(bucketList, output, 0644); err != nil {
-		fmt.Printf("保存软件源列表失败: %v\n", err)
-		return
+	if err := os.WriteFile(bucketsFile, bucketsOutput, 0644); err != nil {
+		return fmt.Errorf("保存软件源列表失败: %v", err)
 	}
 
-	// 3. 复制 Scoop 配置文件
+	// 5. 备份配置文件
 	fmt.Println("3. 备份配置文件...")
-	scoopConfigDir := filepath.Join(homeDir, "scoop", "config")
-	if _, err := os.Stat(scoopConfigDir); err == nil {
+	configDir := filepath.Join(scoopDir, "config")
+	if _, err := os.Stat(configDir); err == nil {
 		configBackupDir := filepath.Join(tmpDir, "config")
-		if err := os.MkdirAll(configBackupDir, 0755); err != nil {
-			fmt.Printf("创建配置备份目录失败: %v\n", err)
-			return
-		}
-
-		// 复制所有配置文件
-		files, err := os.ReadDir(scoopConfigDir)
-		if err != nil {
-			fmt.Printf("读取配置目录失败: %v\n", err)
-			return
-		}
-
-		for _, file := range files {
-			srcPath := filepath.Join(scoopConfigDir, file.Name())
-			dstPath := filepath.Join(configBackupDir, file.Name())
-			input, err := os.ReadFile(srcPath)
-			if err != nil {
-				fmt.Printf("读取配置文件 %s 失败: %v\n", file.Name(), err)
-				continue
-			}
-			if err := os.WriteFile(dstPath, input, 0644); err != nil {
-				fmt.Printf("保存配置文件 %s 失败: %v\n", file.Name(), err)
-				continue
-			}
+		if err := copyDir(configDir, configBackupDir); err != nil {
+			return fmt.Errorf("备份配置文件失败: %v", err)
 		}
 	}
 
-	// 4. 创建恢复脚本
+	// 6. 生成恢复脚本
 	fmt.Println("4. 生成恢复脚本...")
-	restoreScript := filepath.Join(tmpDir, "restore.ps1")
-	scriptContent := `# Scoop 配置恢复脚本
-Write-Host "开始恢复 Scoop 配置..."
+	restoreScript := `@echo off
+echo 开始恢复 Scoop 配置...
 
-# 1. 检查并安装 Scoop
-if (!(Get-Command scoop -ErrorAction SilentlyContinue)) {
-    Write-Host "未检测到 Scoop，正在安装..."
-    Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
-    Invoke-RestScript -Uri get.scoop.sh | Invoke-Expression
-}
+echo 1. 安装 Scoop...
+powershell -Command "Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force; iwr -useb get.scoop.sh | iex"
 
-# 2. 添加软件源
-Write-Host "正在添加软件源..."
-Get-Content "bucket-list.txt" | ForEach-Object {
-    Write-Host "添加软件源: $_"
-    scoop bucket add $_
-}
+echo 2. 添加软件源...
+for /F "tokens=*" %%b in (buckets.txt) do (
+    scoop bucket add %%b
+)
 
-# 3. 安装应用
-Write-Host "正在安装应用..."
-Get-Content "installed-apps.txt" | ForEach-Object {
-    if ($_ -match "^(\S+)\s+") {
-        $app = $matches[1]
-        Write-Host "安装应用: $app"
-        scoop install $app
-    }
-}
+echo 3. 恢复配置文件...
+if exist config (
+    xcopy /E /I /Y config %USERPROFILE%\scoop\config
+)
 
-# 4. 恢复配置文件
-$configDir = Join-Path $env:USERPROFILE "scoop\config"
-if (Test-Path "config") {
-    Write-Host "正在恢复配置文件..."
-    if (!(Test-Path $configDir)) {
-        New-Item -ItemType Directory -Path $configDir -Force | Out-Null
-    }
-    Copy-Item "config\*" $configDir -Force
-}
+echo 4. 安装应用...
+for /F "tokens=*" %%a in (apps.txt) do (
+    scoop install %%a
+)
 
-Write-Host "✅ Scoop 配置恢复完成！"
+echo ✅ Scoop 配置恢复完成！
+pause
 `
-	if err := os.WriteFile(restoreScript, []byte(scriptContent), 0644); err != nil {
-		fmt.Printf("生成恢复脚本失败: %v\n", err)
-		return
+	restoreFile := filepath.Join(tmpDir, "restore.bat")
+	if err := os.WriteFile(restoreFile, []byte(restoreScript), 0644); err != nil {
+		return fmt.Errorf("生成恢复脚本失败: %v", err)
 	}
 
-	// 5. 创建压缩文件
-	backupFile := filepath.Join(backupDir, "scoop-config.tar.gz")
+	// 7. 创建备份文件
 	fmt.Println("5. 创建备份文件...")
+	backupPath := filepath.Join(tmpDir, "scoop-backups.zip")
 
-	// 创建 tar.gz 文件
-	file, err := os.Create(backupFile)
-	if err != nil {
-		fmt.Printf("创建备份文件失败: %v\n", err)
-		return
+	// 使用 PowerShell 的 Compress-Archive 命令创建 ZIP 文件
+	zipCmd := exec.Command("powershell", "-Command",
+		fmt.Sprintf("Compress-Archive -Path '%s\\*' -DestinationPath '%s'", tmpDir, backupPath))
+	zipCmd.Stdout = os.Stdout
+	zipCmd.Stderr = os.Stderr
+	if err := zipCmd.Run(); err != nil {
+		return fmt.Errorf("创建备份文件失败: %v", err)
 	}
 
-	gw := gzip.NewWriter(file)
-	tw := tar.NewWriter(gw)
+	// 8. 上传到远程服务器
+	fmt.Println("\n6. 上传备份文件到远程服务器...")
 
-	// 遍历临时目录中的所有文件
-	err = filepath.Walk(tmpDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
+	// 使用 SFTP 上传文件
+	sftpCmd := exec.Command("sftp", "-o", "StrictHostKeyChecking=no",
+		fmt.Sprintf("%s@%s", defaultServerUser, defaultServerIP))
 
-		// 获取相对路径
-		relPath, err := filepath.Rel(tmpDir, path)
-		if err != nil {
-			return err
-		}
+	// 构建 SFTP 命令
+	sftpCommands := fmt.Sprintf("cd %s\nput %s\nbye\n", defaultServerPath, backupPath)
+	sftpCmd.Stdin = strings.NewReader(sftpCommands)
+	sftpCmd.Stdout = os.Stdout
+	sftpCmd.Stderr = os.Stderr
 
-		// 跳过目录本身
-		if relPath == "." {
-			return nil
-		}
+	if err := sftpCmd.Run(); err != nil {
+		return fmt.Errorf("上传文件失败: %v", err)
+	}
 
-		// 创建 header
-		header, err := tar.FileInfoHeader(info, "")
-		if err != nil {
-			return err
-		}
-		header.Name = filepath.ToSlash(relPath)
+	fmt.Printf("\n✅ Scoop 配置备份完成！\n")
+	fmt.Printf("备份文件已上传到：%s:%s\n", defaultServerIP, defaultServerPath)
+	return nil
+}
 
-		// 写入 header
-		if err := tw.WriteHeader(header); err != nil {
-			return err
-		}
+func copyDir(src, dst string) error {
+	if err := os.MkdirAll(dst, 0755); err != nil {
+		return err
+	}
 
-		// 如果是普通文件，写入内容
-		if !info.IsDir() {
-			data, err := os.ReadFile(path)
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+
+		if entry.IsDir() {
+			if err := copyDir(srcPath, dstPath); err != nil {
+				return err
+			}
+		} else {
+			data, err := os.ReadFile(srcPath)
 			if err != nil {
 				return err
 			}
-			if _, err := tw.Write(data); err != nil {
+			if err := os.WriteFile(dstPath, data, 0644); err != nil {
 				return err
 			}
 		}
-
-		return nil
-	})
-
-	if err != nil {
-		tw.Close()
-		gw.Close()
-		file.Close()
-		fmt.Printf("打包备份文件失败: %v\n", err)
-		return
 	}
 
-	// 关闭所有写入器
-	if err := tw.Close(); err != nil {
-		gw.Close()
-		file.Close()
-		fmt.Printf("关闭 tar writer 失败: %v\n", err)
-		return
-	}
-	if err := gw.Close(); err != nil {
-		file.Close()
-		fmt.Printf("关闭 gzip writer 失败: %v\n", err)
-		return
-	}
-	if err := file.Close(); err != nil {
-		fmt.Printf("关闭文件失败: %v\n", err)
-		return
-	}
-
-	// 6. 上传到远程服务器
-	fmt.Println("6. 上传备份文件到远程服务器...")
-	if err := uploadToRemoteServer(backupFile); err != nil {
-		fmt.Printf("\n⚠️ %v\n", err)
-		return
-	}
-
-	// 7. 清理本地备份文件
-	if err := os.Remove(backupFile); err != nil {
-		fmt.Printf("\n清理本地备份文件失败: %v\n", err)
-		return
-	}
-
-	fmt.Println("\n✅ Scoop 配置备份成功！")
-	fmt.Println("\n备份内容包括：")
-	fmt.Println("1. 已安装的应用列表")
-	fmt.Println("2. 已添加的软件源列表")
-	fmt.Println("3. Scoop 配置文件")
-	fmt.Println("4. 恢复脚本 (restore.ps1)")
+	return nil
 }
