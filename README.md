@@ -9,6 +9,7 @@
    - asdf 版本管理器
    - Yazi 文件管理器
    - Scoop 包管理器 (Windows)
+   - Neovim 编辑器
 
 2. 备份和恢复配置
    - Fish Shell 配置
@@ -49,6 +50,9 @@ qs-tools install yazi
 
 # 安装 Scoop 包管理器 (Windows)
 qs-tools install scoop
+
+# 安装 Neovim 编辑器
+qs-tools install nvim
 ```
 
 ### 备份配置
@@ -89,12 +93,20 @@ qs-tools apply fish
    - 生成恢复脚本
    - 自动上传到远程服务器
 
+3. Neovim
+   - Linux: 从源码编译安装最新版本
+   - Windows: 通过 Scoop 安装
+   - 自动安装必要的依赖
+   - 提供配置文件位置和基本使用说明
+   - 包含 vim-plug 插件管理器安装说明
+
 ## 注意事项
 
 1. 备份功能需要网络连接
 2. Windows 下需要安装 OpenSSH 客户端
 3. 恢复配置前会自动备份现有配置
 4. 某些功能可能需要管理员/超级用户权限
+5. Neovim 在 Linux 下编译安装可能需要较长时间
 
 ## 开发计划
 
@@ -103,6 +115,7 @@ qs-tools apply fish
 - [ ] 添加配置文件的差异比较
 - [ ] 添加 Web 界面
 - [ ] 添加自动更新功能
+- [ ] 添加 Neovim 配置备份和恢复功能
 
 ## 贡献指南
 

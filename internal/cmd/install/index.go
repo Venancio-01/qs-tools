@@ -20,6 +20,7 @@ var Cmd = &cobra.Command{
   - asdf: 安装 asdf 版本管理器
   - yazi: 安装 Yazi 文件管理器
   - scoop: 安装 Scoop 包管理器 (Windows)
+  - nvim: 安装 Neovim 编辑器
 
 支持的系统：
   - Ubuntu 及衍生版
@@ -42,6 +43,8 @@ var Cmd = &cobra.Command{
 			err = installYazi()
 		case "scoop":
 			installScoop()
+		case "nvim":
+			err = installNvim()
 		default:
 			fmt.Printf("不支持的组件: %s\n", args[0])
 			return
