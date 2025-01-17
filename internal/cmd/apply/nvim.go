@@ -1,4 +1,4 @@
-package backup
+package apply
 
 import (
 	"fmt"
@@ -13,19 +13,19 @@ import (
 
 var nvimCmd = &cobra.Command{
 	Use:   "nvim",
-	Short: "备份 Neovim 配置",
-	Long:  `备份 Neovim 配置文件并上传到远程服务器。`,
+	Short: "恢复 Neovim 配置",
+	Long:  `从远程服务器下载并恢复 Neovim 的配置文件。`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return backupNvim()
+		return applyNvim()
 	},
 }
 
 func init() {
-	BackupCmd.AddCommand(nvimCmd)
+	ApplyCmd.AddCommand(nvimCmd)
 }
 
-func backupNvim() error {
-	fmt.Println("开始备份 Neovim 配置...")
+func applyNvim() error {
+	fmt.Println("开始恢复 Neovim 配置...")
 
 	// 获取配置目录
 	configDir := ""
@@ -39,19 +39,14 @@ func backupNvim() error {
 		configDir = filepath.Join(homeDir, ".config", "nvim")
 	}
 
-	// 检查配置目录是否存在
-	if _, err := os.Stat(configDir); os.IsNotExist(err) {
-		return fmt.Errorf("Neovim 配置目录不存在: %s", configDir)
-	}
-
 	// 创建临时目录
-	tmpDir, cleanup, err := utils.CreateTempDir("nvim-backup")
+	tmpDir, cleanup, err := utils.CreateTempDir("nvim-restore")
 	if err != nil {
 		return err
 	}
 	defer cleanup()
 
-	// 创建压缩文件
+	// 从远程服务器下载备份文件
 	backupFile := filepath.Join(tmpDir, "nvim_backup")
 	if runtime.GOOS == "windows" {
 		backupFile += ".zip"
@@ -59,15 +54,15 @@ func backupNvim() error {
 		backupFile += ".tar.gz"
 	}
 
-	if err := utils.CompressDir(configDir, backupFile); err != nil {
+	if err := utils.DownloadFromRemote("nvim", backupFile); err != nil {
 		return err
 	}
 
-	// 上传到远程服务器
-	if err := utils.UploadToRemote("nvim", backupFile); err != nil {
+	// 解压配置文件
+	if err := utils.ExtractFile(backupFile, filepath.Dir(configDir)); err != nil {
 		return err
 	}
 
-	fmt.Printf("\n✅ Neovim 配置备份成功！\n")
+	fmt.Printf("\n✅ Neovim 配置恢复成功！\n")
 	return nil
 }

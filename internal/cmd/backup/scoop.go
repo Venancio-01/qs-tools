@@ -6,8 +6,24 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
+
+	"qs-tools/internal/utils"
+
+	"github.com/spf13/cobra"
 )
+
+var scoopCmd = &cobra.Command{
+	Use:   "scoop",
+	Short: "备份 Scoop 配置",
+	Long:  `备份 Scoop 配置文件并上传到远程服务器。`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return backupScoop()
+	},
+}
+
+func init() {
+	BackupCmd.AddCommand(scoopCmd)
+}
 
 func backupScoop() error {
 	if runtime.GOOS != "windows" {
@@ -17,11 +33,11 @@ func backupScoop() error {
 	fmt.Println("开始备份 Scoop 配置...")
 
 	// 创建临时目录
-	tmpDir, err := os.MkdirTemp("", "scoop-backup")
+	tmpDir, cleanup, err := utils.CreateTempDir("scoop-backup")
 	if err != nil {
-		return fmt.Errorf("创建临时目录失败: %v", err)
+		return err
 	}
-	defer os.RemoveAll(tmpDir)
+	defer cleanup()
 
 	// 导出已安装的应用列表
 	fmt.Println("导出已安装的应用列表...")
@@ -65,31 +81,15 @@ Get-Content apps.txt | ForEach-Object {
 
 	// 创建压缩文件
 	backupFile := filepath.Join(tmpDir, "scoop_backup.zip")
-	fmt.Println("正在压缩配置文件...")
-	cmd = exec.Command("powershell", "-Command",
-		fmt.Sprintf("Compress-Archive -Path '%s\\*' -DestinationPath '%s'",
-			tmpDir, backupFile))
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("压缩配置文件失败: %v", err)
+	if err := utils.CompressDir(tmpDir, backupFile); err != nil {
+		return err
 	}
 
 	// 上传到远程服务器
-	fmt.Println("正在上传到远程服务器...")
-	remotePath := fmt.Sprintf("%s@%s:%s/scoop", defaultServerUser, defaultServerIP, defaultServerPath)
-
-	// Windows 使用 SFTP 批处理命令
-	sftpCommands := fmt.Sprintf("cd %s\nput %s\nbye\n", defaultServerPath+"/scoop", backupFile)
-	cmd = exec.Command("sftp", "-b", "-", fmt.Sprintf("%s@%s", defaultServerUser, defaultServerIP))
-	cmd.Stdin = strings.NewReader(sftpCommands)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("上传配置文件失败: %v", err)
+	if err := utils.UploadToRemote("scoop", backupFile); err != nil {
+		return err
 	}
 
 	fmt.Printf("\n✅ Scoop 配置备份成功！\n")
-	fmt.Printf("备份文件已上传到: %s\n", remotePath)
 	return nil
-} 
+}

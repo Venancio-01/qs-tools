@@ -13,6 +13,12 @@ REMOTE_USER="liqingshan"
 REMOTE_PATH="/home/liqingshan"
 REMOTE_PASS="lqs988910"
 
+# 设置第二个远程主机信息
+REMOTE_HOST2="107.173.165.209"
+REMOTE_USER2="root"
+REMOTE_PATH2="/root/upload"
+REMOTE_PASS2="#6aL*k5d&2Lg*V"
+
 # 清理构建目录
 rm -rf $BUILD_DIR
 mkdir -p $BUILD_DIR
@@ -76,22 +82,42 @@ echo "构建文件位于 $BUILD_DIR 目录"
 echo -e "\n构建文件列表："
 ls -lh $BUILD_DIR
 
-# 验证 Linux 二进制文件的依赖
-echo -e "\nLinux 二进制文件依赖检查："
-if command -v ldd &>/dev/null; then
-  if [ -f "$BUILD_DIR/qs-tools" ]; then
-    echo -e "\n检查文件: $BUILD_DIR/qs-tools"
-    ldd "$BUILD_DIR/qs-tools" || echo "✅ 该文件是静态链接的"
-  fi
-fi
+# # 传输 Linux 版本到远程主机
+# if [ -f "$BUILD_DIR/qs-tools" ]; then
+#   echo -e "\n开始传输文件到远程主机..."
 
-# 传输 Linux 版本到远程主机
-if [ -f "$BUILD_DIR/qs-tools" ]; then
-  echo -e "\n开始传输文件到远程主机..."
+#   # 检查是否可以连接到远程主机
+#   if ping -c 1 $REMOTE_HOST &>/dev/null; then
+#     echo "正在传输到 $REMOTE_USER@$REMOTE_HOST:$REMOTE_PATH ..."
+
+#     # 检查 sshpass 是否安装
+#     if ! command -v sshpass &>/dev/null; then
+#       echo "正在安装 sshpass..."
+#       sudo apt-get update && sudo apt-get install -y sshpass
+#     fi
+
+#     # 使用 sshpass 传输文件
+#     if sshpass -p "$REMOTE_PASS" scp -o StrictHostKeyChecking=no "$BUILD_DIR/qs-tools" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_PATH/"; then
+#       echo "✅ 文件传输成功！"
+
+#       # 设置远程文件权限
+#       sshpass -p "$REMOTE_PASS" ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" "chmod +x $REMOTE_PATH/qs-tools"
+#       echo "✅ 已设置可执行权限"
+#     else
+#       echo "❌ 文件传输失败"
+#     fi
+#   else
+#     echo "❌ 无法连接到远程主机 $REMOTE_HOST"
+#   fi
+# fi
+
+# 传输 Linux 版本到第二个远程主机
+if [ -f "$BUILD_DIR/qs-tools" ] || [ -f "$BUILD_DIR/qs-tools.exe" ]; then
+  echo -e "\n开始传输文件到第二个远程主机..."
 
   # 检查是否可以连接到远程主机
-  if ping -c 1 $REMOTE_HOST &>/dev/null; then
-    echo "正在传输到 $REMOTE_USER@$REMOTE_HOST:$REMOTE_PATH ..."
+  if ping -c 1 $REMOTE_HOST2 &>/dev/null; then
+    echo "正在传输到 $REMOTE_USER2@$REMOTE_HOST2:$REMOTE_PATH2 ..."
 
     # 检查 sshpass 是否安装
     if ! command -v sshpass &>/dev/null; then
@@ -99,17 +125,25 @@ if [ -f "$BUILD_DIR/qs-tools" ]; then
       sudo apt-get update && sudo apt-get install -y sshpass
     fi
 
-    # 使用 sshpass 传输文件
-    if sshpass -p "$REMOTE_PASS" scp -o StrictHostKeyChecking=no "$BUILD_DIR/qs-tools" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_PATH/"; then
-      echo "✅ 文件传输成功！"
-
-      # 设置远程文件权限
-      sshpass -p "$REMOTE_PASS" ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" "chmod +x $REMOTE_PATH/qs-tools"
-      echo "✅ 已设置可执行权限"
-    else
-      echo "❌ 文件传输失败"
+    # 传输 Linux 版本
+    if [ -f "$BUILD_DIR/qs-tools" ]; then
+      if sshpass -p "$REMOTE_PASS2" scp -o StrictHostKeyChecking=no "$BUILD_DIR/qs-tools" "$REMOTE_USER2@$REMOTE_HOST2:$REMOTE_PATH2/"; then
+        echo "✅ Linux 版本传输成功！"
+      else
+        echo "❌ Linux 版本传输失败"
+      fi
     fi
+
+    # 传输 Windows 版本
+    if [ -f "$BUILD_DIR/qs-tools.exe" ]; then
+      if sshpass -p "$REMOTE_PASS2" scp -o StrictHostKeyChecking=no "$BUILD_DIR/qs-tools.exe" "$REMOTE_USER2@$REMOTE_HOST2:$REMOTE_PATH2/"; then
+        echo "✅ Windows 版本传输成功！"
+      else
+        echo "❌ Windows 版本传输失败"
+      fi
+    fi
+
   else
-    echo "❌ 无法连接到远程主机 $REMOTE_HOST"
+    echo "❌ 无法连接到远程主机 $REMOTE_HOST2"
   fi
 fi
